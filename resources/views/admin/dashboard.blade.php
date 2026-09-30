@@ -95,25 +95,32 @@
     </div>
 </div>
 
-{{-- ── Info Box ── --}}
+{{-- ── Grafik Presensi Harian ── --}}
 <div class="card">
     <div class="card-header">
-        <h3>ℹ️ Informasi Sistem</h3>
+        <h3>📈 Grafik Presensi Harian (Hari Ini)</h3>
     </div>
     <div class="card-body">
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;">
-            <div style="padding:14px;background:#f9fafb;border-radius:10px;border:1px solid #e5e7eb;">
-                <p style="font-size:.78rem;color:#6b7280;font-weight:600;text-transform:uppercase;">Laravel</p>
-                <p style="font-weight:700;color:#1e1b4b;margin-top:4px;">v{{ app()->version() }}</p>
+        <div style="display: flex; align-items: flex-end; height: 180px; gap: 20px; padding: 20px 20px 0 20px; border-bottom: 2px solid #e5e7eb;">
+            <!-- Dummy Data / Placeholder for Bar Chart -->
+            <div style="flex: 1; background: linear-gradient(to top, #10b981, #34d399); height: 92%; border-radius: 8px 8px 0 0; position: relative;" title="Hadir - 92%">
+                <span style="position: absolute; top: -25px; left: 50%; transform: translateX(-50%); font-weight: 700; font-size: 0.85rem; color: #047857;">92%</span>
             </div>
-            <div style="padding:14px;background:#f9fafb;border-radius:10px;border:1px solid #e5e7eb;">
-                <p style="font-size:.78rem;color:#6b7280;font-weight:600;text-transform:uppercase;">PHP</p>
-                <p style="font-weight:700;color:#1e1b4b;margin-top:4px;">v{{ PHP_VERSION }}</p>
+            <div style="flex: 1; background: linear-gradient(to top, #3b82f6, #60a5fa); height: 5%; border-radius: 8px 8px 0 0; position: relative;" title="Sakit - 5%">
+                <span style="position: absolute; top: -25px; left: 50%; transform: translateX(-50%); font-weight: 700; font-size: 0.85rem; color: #1d4ed8;">5%</span>
             </div>
-            <div style="padding:14px;background:#f9fafb;border-radius:10px;border:1px solid #e5e7eb;">
-                <p style="font-size:.78rem;color:#6b7280;font-weight:600;text-transform:uppercase;">Status Server</p>
-                <p style="font-weight:700;color:#16a34a;margin-top:4px;">🟢 Online</p>
+            <div style="flex: 1; background: linear-gradient(to top, #f59e0b, #fbbf24); height: 2%; border-radius: 8px 8px 0 0; position: relative;" title="Izin - 2%">
+                <span style="position: absolute; top: -25px; left: 50%; transform: translateX(-50%); font-weight: 700; font-size: 0.85rem; color: #b45309;">2%</span>
             </div>
+            <div style="flex: 1; background: linear-gradient(to top, #ef4444, #f87171); height: 1%; border-radius: 8px 8px 0 0; position: relative;" title="Alpa - 1%">
+                <span style="position: absolute; top: -25px; left: 50%; transform: translateX(-50%); font-weight: 700; font-size: 0.85rem; color: #b91c1c;">1%</span>
+            </div>
+        </div>
+        <div style="display: flex; justify-content: space-between; gap: 20px; padding: 10px 20px 0; font-size: 0.85rem; font-weight: 600; color: #6b7280; text-align: center;">
+            <span style="flex: 1;">Hadir</span>
+            <span style="flex: 1;">Sakit</span>
+            <span style="flex: 1;">Izin</span>
+            <span style="flex: 1;">Alpa</span>
         </div>
     </div>
 </div>

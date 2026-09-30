@@ -7,112 +7,124 @@ use App\Models\Siswa;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 
 class SiswaController extends Controller
 {
-    /**
-     * Daftar semua siswa (Admin).
-     */
+    // ================= ADMIN =================
+
     public function index()
     {
-        $siswas = Siswa::with(['user', 'kelas'])->orderBy('nama_siswa')->get();
+        $siswas = Siswa::with('kelas')->orderBy('nama_siswa')->paginate(10);
+
         return view('admin.siswa.index', compact('siswas'));
     }
 
-    /**
-     * Form tambah siswa baru.
-     */
     public function create()
     {
         $kelas = Kelas::orderBy('nama_kelas')->get();
+
         return view('admin.siswa.create', compact('kelas'));
     }
 
-    /**
-     * Simpan siswa baru beserta akun user-nya.
-     */
     public function store(Request $request)
     {
-        $request->validate([
-            'name'          => 'required|string|max:255',
-            'email'         => 'required|email|unique:users,email',
-            'password'      => 'required|string|min:6|confirmed',
-            'kelas_id'      => 'required|exists:kelas,id',
-            'nis'           => 'required|string|unique:siswa,nis',
-            'nisn'          => 'required|string|unique:siswa,nisn',
+        // Email otomatis jika dikosongkan
+        $request->merge([
+            'email' => $request->filled('email')
+                ? trim($request->email)
+                : trim((string) $request->nis) . '@siswa.sch.id',
+        ]);
+
+        $data = $request->validate([
             'nama_siswa'    => 'required|string|max:255',
-            'jenis_kelamin' => 'required|in:L,P',
+            'nis'           => 'required|string|max:30|unique:siswa,nis',
+            'nisn'          => 'required|string|max:30|unique:siswa,nisn',
+            'kelas_id'      => 'required|exists:kelas,id',
+            'jenis_kelamin' => ['required', Rule::in(['L', 'P'])],
+            'email'         => 'required|email|unique:users,email',
         ]);
 
-        // 1. Buat akun user
-        $user = User::create([
-            'name'     => $request->name,
-            'email'    => $request->email,
-            'password' => Hash::make($request->password),
-            'role'     => 'siswa',
-        ]);
+        DB::transaction(function () use ($data) {
+            $user = User::create([
+                'name'     => $data['nama_siswa'],
+                'email'    => $data['email'],
+                'password' => Hash::make($data['nis']), // password awal = NIS
+                'role'     => 'siswa',
+            ]);
 
-        // 2. Buat data siswa & tautkan ke user
-        Siswa::create([
-            'user_id'       => $user->id,
-            'kelas_id'      => $request->kelas_id,
-            'nis'           => $request->nis,
-            'nisn'          => $request->nisn,
-            'nama_siswa'    => $request->nama_siswa,
-            'jenis_kelamin' => $request->jenis_kelamin,
-        ]);
+            Siswa::create([
+                'user_id'       => $user->id,
+                'kelas_id'      => $data['kelas_id'],
+                'nis'           => $data['nis'],
+                'nisn'          => $data['nisn'],
+                'nama_siswa'    => $data['nama_siswa'],
+                'jenis_kelamin' => $data['jenis_kelamin'],
+            ]);
+        });
 
-        return redirect()->route('siswa.index')
-            ->with('success', 'Data siswa berhasil ditambahkan!');
+        return redirect()->route('admin.siswa.index')
+            ->with('success', "Siswa ditambahkan. Login: {$data['email']} / password awal: {$data['nis']}");
     }
 
-    /**
-     * Form edit data siswa.
-     */
     public function edit(Siswa $siswa)
     {
+        $siswa->load('user');
         $kelas = Kelas::orderBy('nama_kelas')->get();
+
         return view('admin.siswa.edit', compact('siswa', 'kelas'));
     }
 
-    /**
-     * Update data siswa.
-     */
     public function update(Request $request, Siswa $siswa)
     {
-        $request->validate([
-            'kelas_id'      => 'required|exists:kelas,id',
-            'nis'           => 'required|string|unique:siswa,nis,' . $siswa->id,
-            'nisn'          => 'required|string|unique:siswa,nisn,' . $siswa->id,
+        $data = $request->validate([
             'nama_siswa'    => 'required|string|max:255',
-            'jenis_kelamin' => 'required|in:L,P',
+            'nis'           => ['required', 'string', 'max:30', Rule::unique('siswa', 'nis')->ignore($siswa->id)],
+            'nisn'          => ['required', 'string', 'max:30', Rule::unique('siswa', 'nisn')->ignore($siswa->id)],
+            'kelas_id'      => 'required|exists:kelas,id',
+            'jenis_kelamin' => ['required', Rule::in(['L', 'P'])],
+            'email'         => ['required', 'email', Rule::unique('users', 'email')->ignore($siswa->user_id)],
+            'password'      => 'nullable|string|min:6',
         ]);
 
-        $siswa->update($request->only([
-            'kelas_id', 'nis', 'nisn', 'nama_siswa', 'jenis_kelamin',
-        ]));
+        DB::transaction(function () use ($data, $siswa) {
+            $siswa->update([
+                'kelas_id'      => $data['kelas_id'],
+                'nis'           => $data['nis'],
+                'nisn'          => $data['nisn'],
+                'nama_siswa'    => $data['nama_siswa'],
+                'jenis_kelamin' => $data['jenis_kelamin'],
+            ]);
 
-        return redirect()->route('siswa.index')
-            ->with('success', 'Data siswa berhasil diperbarui!');
+            $userData = ['name' => $data['nama_siswa'], 'email' => $data['email']];
+            if (!empty($data['password'])) {
+                $userData['password'] = Hash::make($data['password']);
+            }
+            $siswa->user()->update($userData);
+        });
+
+        return redirect()->route('admin.siswa.index')->with('success', 'Data siswa berhasil diperbarui.');
     }
 
-    /**
-     * Hapus data siswa (akun user ikut terhapus via cascade).
-     */
     public function destroy(Siswa $siswa)
     {
-        $siswa->user()->delete(); // hapus user → siswa ikut cascade
-        return redirect()->route('siswa.index')
-            ->with('success', 'Data siswa berhasil dihapus!');
+        DB::transaction(function () use ($siswa) {
+            $user = $siswa->user;
+            $siswa->delete();
+            $user?->delete();
+        });
+
+        return redirect()->route('admin.siswa.index')->with('success', 'Data siswa berhasil dihapus.');
     }
 
-    /**
-     * Dashboard Portal Siswa — melihat profil dan rekap nilai sendiri.
-     */
+    // ================= PORTAL SISWA (view-only) =================
+
     public function portal()
     {
-        $siswa  = Siswa::with(['kelas', 'nilai.mataPelajaran'])
+        // Hanya data milik user yang sedang login
+        $siswa = Siswa::with(['kelas', 'nilai.mataPelajaran', 'absensi'])
             ->where('user_id', Auth::id())
             ->first();
 

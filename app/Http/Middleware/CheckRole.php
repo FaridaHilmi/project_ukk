@@ -10,36 +10,42 @@ use Symfony\Component\HttpFoundation\Response;
 class CheckRole
 {
     /**
-     * Handle an incoming request.
-     *
-     * Usage di route: ->middleware('role:admin')
-     *                 ->middleware('role:admin,guru')   ← multi-role
-     *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
-     * @param  string  ...$roles  Daftar role yang diizinkan mengakses route ini
+     * Pemakaian: ->middleware('role:admin') atau ->middleware('role:admin,guru')
      */
     public function handle(Request $request, Closure $next, string ...$roles): Response
     {
-        // Pastikan user sudah login
         if (!Auth::check()) {
-            return redirect()->route('login')
-                ->with('error', 'Silakan login terlebih dahulu.');
+            return redirect()->route('login')->with('error', 'Silakan login terlebih dahulu.');
         }
 
-        $userRole = Auth::user()->role;
+        // Normalisasi KEDUA sisi supaya "Admin" == "admin" (sumber loop sebelumnya)
+        $userRole = strtolower(trim((string) Auth::user()->role));
+        $allowed  = array_map(fn ($r) => strtolower(trim($r)), $roles);
 
-        // Izinkan jika role user ada dalam daftar role yang diizinkan
-        if (in_array($userRole, $roles)) {
+        if (in_array($userRole, $allowed, true)) {
             return $next($request);
         }
 
-        // Role tidak sesuai → redirect ke dashboard masing-masing dengan pesan error
         $redirectRoute = match ($userRole) {
-            'admin'  => 'admin.dashboard',
-            'guru'   => 'guru.dashboard',
-            'siswa'  => 'siswa.dashboard',
-            default  => 'login',
+            'admin' => 'admin.dashboard',
+            'guru'  => 'guru.dashboard',
+            'siswa' => 'siswa.dashboard',
+            default => null,
         };
+
+        // Role tidak dikenali -> logout bersih
+        if (!$redirectRoute) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect()->route('login')->with('error', 'Role akun Anda tidak valid.');
+        }
+
+        // Pengaman anti-loop: jangan redirect ke halaman yang sama
+        if ($request->routeIs($redirectRoute)) {
+            abort(403, 'Anda tidak memiliki izin untuk mengakses halaman ini.');
+        }
 
         return redirect()->route($redirectRoute)
             ->with('error', 'Anda tidak memiliki izin untuk mengakses halaman tersebut.');

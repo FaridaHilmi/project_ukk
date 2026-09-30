@@ -22,9 +22,9 @@ return new class extends Migration
         $table->text('keterangan')->nullable();
         
         // Relasi
-        $table->foreign('siswa_id')->references('siswa_id')->on('siswa')->onDelete('cascade');
-        $table->foreign('guru_id')->references('guru_id')->on('guru')->onDelete('cascade');
-        $table->foreign('mapel_id')->references('mapel_id')->on('mata_pelajaran')->onDelete('cascade');
+        $table->foreign('siswa_id')->references('id')->on('siswa')->onDelete('cascade');
+        $table->foreign('guru_id')->references('id')->on('guru')->onDelete('cascade');
+        $table->foreign('mapel_id')->references('id')->on('mata_pelajaran')->onDelete('cascade');
         
         $table->timestamps();
     });

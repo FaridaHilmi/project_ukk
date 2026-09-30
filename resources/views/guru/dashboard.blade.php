@@ -98,6 +98,46 @@
                 </div>
             </a>
 
+            {{-- Input Absensi (Baru ditambahkan) --}}
+            <a href="#" style="text-decoration:none;">
+                <div style="padding:20px;background:linear-gradient(135deg,#fef08a,#fde047);
+                     border-radius:14px;border:1px solid #facc15;
+                     transition:transform .2s,box-shadow .2s;cursor:pointer;"
+                     onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 24px rgba(234,179,8,.2)'"
+                     onmouseout="this.style.transform='';this.style.boxShadow=''">
+                    <div style="font-size:2rem;margin-bottom:10px;">📅</div>
+                    <h4 style="font-size:.95rem;font-weight:700;color:#854d0e;margin-bottom:4px;">Input Absensi</h4>
+                    <p style="font-size:.8rem;color:#a16207;">Catat kehadiran harian siswa</p>
+                </div>
+            </a>
+
+        </div>
+    </div>
+</div>
+
+{{-- ── Kelas Yang Diampu ── --}}
+<div class="card" style="margin-bottom:28px;">
+    <div class="card-header">
+        <h3>🏫 Kelas yang Diampu</h3>
+    </div>
+    <div class="card-body">
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px;">
+            <!-- Placeholder karena skema DB belum memiliki relasi langsung Guru-Kelas -->
+            <div style="padding:16px;background:#f9fafb;border-radius:12px;border:1px dashed #d1d5db;text-align:center;">
+                <div style="font-size:1.8rem;margin-bottom:8px;">10</div>
+                <h4 style="font-size:.95rem;color:#374151;">X RPL 1</h4>
+                <p style="font-size:.75rem;color:#6b7280;margin-top:4px;">32 Siswa</p>
+            </div>
+            <div style="padding:16px;background:#f9fafb;border-radius:12px;border:1px dashed #d1d5db;text-align:center;">
+                <div style="font-size:1.8rem;margin-bottom:8px;">11</div>
+                <h4 style="font-size:.95rem;color:#374151;">XI RPL 2</h4>
+                <p style="font-size:.75rem;color:#6b7280;margin-top:4px;">30 Siswa</p>
+            </div>
+            <div style="padding:16px;background:#f9fafb;border-radius:12px;border:1px dashed #d1d5db;text-align:center;">
+                <div style="font-size:1.8rem;margin-bottom:8px;">12</div>
+                <h4 style="font-size:.95rem;color:#374151;">XII RPL 1</h4>
+                <p style="font-size:.75rem;color:#6b7280;margin-top:4px;">35 Siswa</p>
+            </div>
         </div>
     </div>
 </div>

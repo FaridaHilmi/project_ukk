@@ -5,96 +5,101 @@ namespace App\Http\Controllers;
 use App\Models\Guru;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 
 class GuruController extends Controller
 {
-    /**
-     * Daftar semua guru (Admin).
-     */
     public function index()
     {
-        $gurus = Guru::with('user')->orderBy('nama_guru')->get();
+        $gurus = Guru::with('user')->orderBy('nama_guru')->paginate(10);
+
         return view('admin.guru.index', compact('gurus'));
     }
 
-    /**
-     * Form tambah guru baru.
-     */
     public function create()
     {
         return view('admin.guru.create');
     }
 
-    /**
-     * Simpan guru baru beserta akun user-nya.
-     */
     public function store(Request $request)
     {
-        $request->validate([
-            'name'      => 'required|string|max:255',
-            'email'     => 'required|email|unique:users,email',
-            'password'  => 'required|string|min:6|confirmed',
-            'nip'       => 'required|string|unique:guru,nip',
+        $request->merge([
+            'email' => $request->filled('email')
+                ? trim($request->email)
+                : trim((string) $request->nip) . '@guru.sch.id',
+        ]);
+
+        $data = $request->validate([
+            'nip'       => 'required|string|max:30|unique:guru,nip',
             'nama_guru' => 'required|string|max:255',
             'no_hp'     => 'nullable|string|max:20',
+            'email'     => 'required|email|unique:users,email',
         ]);
 
-        // 1. Buat akun user
-        $user = User::create([
-            'name'     => $request->name,
-            'email'    => $request->email,
-            'password' => Hash::make($request->password),
-            'role'     => 'guru',
-        ]);
+        DB::transaction(function () use ($data) {
+            $user = User::create([
+                'name'     => $data['nama_guru'],
+                'email'    => $data['email'],
+                'password' => Hash::make($data['nip']), // password awal = NIP
+                'role'     => 'guru',
+            ]);
 
-        // 2. Buat data detail guru
-        Guru::create([
-            'user_id'   => $user->id,
-            'nip'       => $request->nip,
-            'nama_guru' => $request->nama_guru,
-            'no_hp'     => $request->no_hp,
-        ]);
+            Guru::create([
+                'user_id'   => $user->id,
+                'nip'       => $data['nip'],
+                'nama_guru' => $data['nama_guru'],
+                'no_hp'     => $data['no_hp'] ?? null,
+            ]);
+        });
 
-        return redirect()->route('guru.index')
-            ->with('success', 'Data guru berhasil ditambahkan!');
+        return redirect()->route('admin.guru.index')
+            ->with('success', "Guru ditambahkan. Login: {$data['email']} / password awal: {$data['nip']}");
     }
 
-    /**
-     * Form edit data guru.
-     */
     public function edit(Guru $guru)
     {
+        $guru->load('user');
+
         return view('admin.guru.edit', compact('guru'));
     }
 
-    /**
-     * Update data guru.
-     */
     public function update(Request $request, Guru $guru)
     {
-        $request->validate([
-            'nip'       => 'required|string|unique:guru,nip,' . $guru->id,
+        $data = $request->validate([
+            'nip'       => ['required', 'string', 'max:30', Rule::unique('guru', 'nip')->ignore($guru->id)],
             'nama_guru' => 'required|string|max:255',
             'no_hp'     => 'nullable|string|max:20',
+            'email'     => ['required', 'email', Rule::unique('users', 'email')->ignore($guru->user_id)],
+            'password'  => 'nullable|string|min:6',
         ]);
 
-        $guru->update($request->only(['nip', 'nama_guru', 'no_hp']));
+        DB::transaction(function () use ($data, $guru) {
+            $guru->update([
+                'nip'       => $data['nip'],
+                'nama_guru' => $data['nama_guru'],
+                'no_hp'     => $data['no_hp'] ?? null,
+            ]);
 
-        // Update nama di tabel users juga
-        $guru->user->update(['name' => $request->nama_guru]);
+            $userData = ['name' => $data['nama_guru'], 'email' => $data['email']];
+            if (!empty($data['password'])) {
+                $userData['password'] = Hash::make($data['password']);
+            }
+            $guru->user()->update($userData);
+        });
 
-        return redirect()->route('guru.index')
-            ->with('success', 'Data guru berhasil diperbarui!');
+        return redirect()->route('admin.guru.index')->with('success', 'Data guru berhasil diperbarui.');
     }
 
-    /**
-     * Hapus data guru (akun user ikut terhapus via cascade).
-     */
     public function destroy(Guru $guru)
     {
-        $guru->user()->delete(); // hapus user → guru ikut cascade
-        return redirect()->route('guru.index')
-            ->with('success', 'Data guru berhasil dihapus!');
+        DB::transaction(function () use ($guru) {
+            $user = $guru->user;
+            $guru->delete();
+            $user?->delete();
+        });
+
+        return redirect()->route('admin.guru.index')->with('success', 'Data guru berhasil dihapus.');
     }
 }

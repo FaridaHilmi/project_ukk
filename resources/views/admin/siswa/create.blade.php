@@ -21,7 +21,7 @@
         </div>
     @endif
 
-    <form action="{{ route('siswa.store') }}" method="POST">
+    <form action="{{ route('admin.siswa.store') }}" method="POST">
         @csrf
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>

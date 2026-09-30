@@ -7,89 +7,58 @@ use App\Http\Controllers\SiswaController;
 use App\Http\Controllers\GuruController;
 use App\Http\Controllers\NilaiController;
 
-// ============================================================
-// Route Publik — Redirect root ke login
-// ============================================================
-Route::get('/', function () {
-    return redirect()->route('login');
-});
+Route::get('/', fn () => redirect()->route('login'));
 
-// ============================================================
-// Route Auth — Login & Logout
-// ============================================================
-Route::middleware('guest')->group(function () {
-    Route::get('/login',  [AuthController::class, 'showLoginForm'])->name('login');
-    Route::post('/login', [AuthController::class, 'login'])->name('login.post');
-});
+// Login TANPA middleware 'guest' (redirect multi-role ditangani AuthController).
+// Middleware 'guest' bawaan Laravel me-redirect ke '/', dan '/' kembali ke login => loop.
+Route::get('/login',  [AuthController::class, 'showLoginForm'])->name('login');
+Route::post('/login', [AuthController::class, 'login'])->name('login.post');
+Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
 
-Route::post('/logout', [AuthController::class, 'logout'])
-    ->middleware('auth')
-    ->name('logout');
-
-// ============================================================
-// Route Admin / TU
-// Hanya role 'admin' yang dapat mengakses
-// ============================================================
+// ADMIN / TU
 Route::middleware(['auth', 'role:admin'])
     ->prefix('admin')
     ->name('admin.')
     ->group(function () {
 
-        // Dashboard Admin
         Route::get('/dashboard', function () {
-            $totalSiswa      = \App\Models\Siswa::count();
-            $totalGuru       = \App\Models\Guru::count();
-            $totalKelas      = \App\Models\Kelas::count();
-            $totalMapel      = \App\Models\MataPelajaran::count();
+            $totalSiswa = \App\Models\Siswa::count();
+            $totalGuru  = \App\Models\Guru::count();
+            $totalKelas = \App\Models\Kelas::count();
+            $totalMapel = \App\Models\MataPelajaran::count();
 
-            return view('admin.dashboard', compact(
-                'totalSiswa', 'totalGuru', 'totalKelas', 'totalMapel'
-            ));
+            return view('admin.dashboard', compact('totalSiswa', 'totalGuru', 'totalKelas', 'totalMapel'));
         })->name('dashboard');
 
-        // Manajemen Data Siswa
-        Route::resource('siswa', SiswaController::class);
-
-        // Manajemen Data Guru
-        Route::resource('guru', GuruController::class);
+        Route::resource('siswa', SiswaController::class)->except('show');
+        Route::resource('guru', GuruController::class)->except('show');
+        // Kelas & Mata Pelajaran: ditambahkan di langkah berikutnya
     });
 
-// ============================================================
-// Route Guru
-// Hanya role 'guru' yang dapat mengakses
-// ============================================================
+// GURU
 Route::middleware(['auth', 'role:guru'])
     ->prefix('guru')
     ->name('guru.')
     ->group(function () {
 
-        // Dashboard Guru
         Route::get('/dashboard', function () {
-            $guru   = \App\Models\Guru::where('user_id', Auth::id())->first();
-            $jumlahNilai = $guru
-                ? \App\Models\Nilai::where('guru_id', $guru->id)->count()
-                : 0;
+            $guru        = \App\Models\Guru::where('user_id', Auth::id())->first();
+            $jumlahNilai = $guru ? \App\Models\Nilai::where('guru_id', $guru->id)->count() : 0;
 
             return view('guru.dashboard', compact('guru', 'jumlahNilai'));
         })->name('dashboard');
 
-        // Input & Kelola Nilai
-        Route::resource('nilai', NilaiController::class);
-
-        // Endpoint AJAX preview kalkulasi nilai akhir
+        // Didefinisikan SEBELUM resource agar tidak tertabrak pola nilai/{nilai}
         Route::post('/nilai/hitung-preview', [NilaiController::class, 'hitungPreview'])
             ->name('nilai.hitung-preview');
+
+        Route::resource('nilai', NilaiController::class);
     });
 
-// ============================================================
-// Route Siswa
-// Hanya role 'siswa' yang dapat mengakses
-// ============================================================
+// SISWA (view-only)
 Route::middleware(['auth', 'role:siswa'])
     ->prefix('siswa')
     ->name('siswa.')
     ->group(function () {
-
-        // Dashboard / Portal Siswa
         Route::get('/dashboard', [SiswaController::class, 'portal'])->name('dashboard');
     });
